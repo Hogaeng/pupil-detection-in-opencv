@@ -1,0 +1,4 @@
+﻿  Source.c
+c:\users\user\documents\visual studio 2015\projects\project1\project1\source.c(9): warning C4101: 'name3': unreferenced local variable
+  Project1.vcxproj -> c:\users\user\documents\visual studio 2015\Projects\Project1\x64\Debug\Project1.exe
+  Project1.vcxproj -> c:\users\user\documents\visual studio 2015\Projects\Project1\x64\Debug\Project1.pdb (Partial PDB)
