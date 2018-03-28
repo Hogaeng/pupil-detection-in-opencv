@@ -2,7 +2,10 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <fstream>
+#include <cmath>
 #include <opencv2/core/ocl.hpp>
+#define IPD 65;
 using namespace std;
 using namespace cv;
 static void help()
@@ -26,6 +29,9 @@ void detectAndDraw(Mat& img, CascadeClassifier& cascade,
 	double scale, bool tryflip);
 string cascadeName;
 string nestedCascadeName;
+bool firstwriteipd = true;
+float IPDperpix;
+
 int main(int argc, const char** argv)
 {
 	VideoCapture capture;
@@ -37,7 +43,7 @@ int main(int argc, const char** argv)
 	cv::CommandLineParser parser(argc, argv,
 		"{cascade|res\\haarcascade_frontalface_alt.xml|}"
 		"{nested-cascade|res\\haarcascade_eye_tree_eyeglasses.xml|}"
-		"{scale|1|}{try-flip||}{@filename|Jun.JPG|}"
+		"{scale|1|}{try-flip||}{@filename|video.mp4|}"
 		);
 	ocl::setUseOpenCL(false);
 	/*if (parser.has("help"))
@@ -92,10 +98,12 @@ int main(int argc, const char** argv)
 		for (;;)
 		{
 			capture >> frame;
+			frame = frame.t();
 			if (frame.empty())
 				break;
 			Mat frame1 = frame.clone();
 			detectAndDraw(frame1, cascade, nestedCascade, scale, tryflip);
+			//print(nestedCascade.get)
 			char c = (char)waitKey(10);
 			if (c == 27 || c == 'q' || c == 'Q')
 				break;
@@ -147,6 +155,8 @@ void detectAndDraw(Mat& img, CascadeClassifier& cascade,
 	CascadeClassifier& nestedCascade,
 	double scale, bool tryflip)
 {
+	ofstream myfile;
+	myfile.open("example.txt", ios::app|ios::out);
 	double t = 0;
 	vector<Rect> faces, faces2;
 	const static Scalar colors[] =
@@ -169,21 +179,22 @@ void detectAndDraw(Mat& img, CascadeClassifier& cascade,
 	if (smallImg.empty()) { 
 		cerr << "cascade out" << endl; exit(1); }
 	cascade.detectMultiScale(smallImg, faces,
-		1.1, 2);
-		//, 0
-		//|CASCADE_FIND_BIGGEST_OBJECT
-		//|CASCADE_DO_ROUGH_SEARCH
-		//| CASCADE_SCALE_IMAGE,
-		//Size(30, 30));
+		1.1, 2
+		, 0
+		|CASCADE_FIND_BIGGEST_OBJECT
+		|CASCADE_DO_ROUGH_SEARCH
+		| CASCADE_SCALE_IMAGE,
+		Size(30, 30));
 	if (tryflip)
 	{
 		flip(smallImg, smallImg, 1);
 		cascade.detectMultiScale(smallImg, faces2,
-			1.1, 2);
-			//|CASCADE_FIND_BIGGEST_OBJECT
-			//|CASCADE_DO_ROUGH_SEARCH
-			//| CASCADE_SCALE_IMAGE,
-			//Size(30, 30));
+			1.1, 2
+			,0
+			|CASCADE_FIND_BIGGEST_OBJECT
+			|CASCADE_DO_ROUGH_SEARCH
+			| CASCADE_SCALE_IMAGE,
+			Size(30, 30));
 		for (vector<Rect>::const_iterator r = faces2.begin(); r != faces2.end(); ++r)
 		{
 			faces.push_back(Rect(smallImg.cols - r->x - r->width, r->y, r->width, r->height));
@@ -216,20 +227,49 @@ void detectAndDraw(Mat& img, CascadeClassifier& cascade,
 		smallImgROI = smallImg(r);
 		nestedCascade.detectMultiScale(smallImgROI, nestedObjects,
 			1.1, 2);
-			//, 0
-			//|CASCADE_FIND_BIGGEST_OBJECT
-			//|CASCADE_DO_ROUGH_SEARCH
-			//|CASCADE_DO_CANNY_PRUNING
-			//| CASCADE_SCALE_IMAGE,
-			//Size(30, 30));
+			/*, 0
+			|CASCADE_FIND_BIGGEST_OBJECT
+			|CASCADE_DO_ROUGH_SEARCH
+			|CASCADE_DO_CANNY_PRUNING
+			| CASCADE_SCALE_IMAGE,
+			Size(30, 30));*/
+		int rx, ry, lx, ly;
+		int ipd = IPD;
 		for (size_t j = 0; j < nestedObjects.size(); j++)
 		{
 			Rect nr = nestedObjects[j];
 			center.x = cvRound((r.x + nr.x + nr.width*0.5)*scale);
 			center.y = cvRound((r.y + nr.y + nr.height*0.5)*scale);
+			
+			if(j==0){
+				cout <<"R:"<<"x:" << center.x << " y:" << center.y << endl;
+				rx = center.x;
+				ry = center.y;
+			}
+			else {
+				color = colors[1];
+				cout <<"L:"<< "x:" << center.x << " y:" << center.y << endl;
+				lx = center.x;
+				ly = center.y;
+				cout << "D:" << "dx:" << lx-rx << " dy:" << ly-ry << endl;
+				if (firstwriteipd)
+					IPDperpix = abs(lx - rx)/ ipd;
+				//cout << IPDperpix << endl;
+				if (myfile.is_open()){
+					if(firstwriteipd){
+						myfile << "ipd: "<< IPDperpix;
+						myfile << "\n";
+						firstwriteipd = false;
+					}
+					myfile <<"frameipd:"<< abs((lx - rx)/IPDperpix);
+					myfile << "\n";
+				}
+			}
 			radius = cvRound((nr.width + nr.height)*0.25*scale);
 			circle(img, center, radius, color, 3, 8, 0);
+			line(img, center, center, colors[2],3);
 		}
 	}
 	imshow("result", img);
+	myfile.close();
 }

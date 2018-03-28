@@ -30,7 +30,6 @@ int main(int argc, const char** argv) {
 
 	// Load the cascades
 	if (!face_cascade.load(face_cascade_name)) { printf("--(!)Error loading face cascade, please change face_cascade_name in source code.\n"); return -1; };
-
 	cv::namedWindow(main_window_name, CV_WINDOW_NORMAL);
 	cv::moveWindow(main_window_name, 400, 100);
 	cv::namedWindow(face_window_name, CV_WINDOW_NORMAL);
