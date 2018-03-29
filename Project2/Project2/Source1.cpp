@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <cmath>
 using namespace std;
 using namespace cv;
 /// Global variables
@@ -13,7 +14,7 @@ char* window_name = "Threshold Demo";
 int threshold_value = 20;//binary image
 int threshold_type = 0;
 int canny = 0;//edge algorithm
-int picture_num = 0;//the pictures
+int picture_num = 4;//the pictures
 int const max_value = 255;
 int const max_type = 4;
 int const max_picture = 4;
@@ -21,6 +22,8 @@ int const max_canny = 100;
 int const max_BINARY_value = 255;
 int MAX_KERNEL_LENGTH = 15;
 Mat src, src_gray, dst[4][2];
+vector<Point> points;
+Point realPoint;
 //{[0]:  median filtering, [1]:threshold algorithm, [2]:edge detection, [3]:ellipse detection}
 //{[0]은 단계별 결과 데이터, [1]은 [0]을 다음 단계의 입력값으로 넣게 되어 손상된 데이터}
 char* trackbar_value = "Value";
@@ -28,6 +31,28 @@ char* trackbar_value = "Value";
 static void showPicture(int, void*)
 {	//cout << picture_num << endl;
 	imshow(window_name, dst[picture_num][0]);
+}
+void pointsClusting()
+{
+	int width = 320/2;
+	int height = 240/2;
+	int nexx, prex = width;
+	int nexy, prey = height;
+	int reali=0;
+	for (int i = 0; i < points.size(); i++)
+	{
+		nexx = abs(width - points[i].x);
+		nexy = abs(width - points[i].y);
+		if (nexx < prex) {
+			prex = nexx;
+			reali = i;
+		}
+		if (nexy < prey) {
+			prey = nexy;
+			reali = i;
+		}
+	}
+	realPoint = points[reali];
 }
 void ellipseDetect()
 {
@@ -75,18 +100,20 @@ void ellipseDetect()
 		float measure = cnz / n;
 		// Draw, color coded: good -> gree, bad -> red
 		ellipse(img, ell, Scalar(0, measure * 255, 255 - measure * 255), 3);
-		circle(img, ell.center, 5, Scalar(255, 0, 0));
-		cout << ell.center.x << ":" << ell.center.y << endl;
+		points.push_back(ell.center);
+		
 	}
-	dst[4][0]= img.clone();
+	pointsClusting();
+	circle(img, realPoint, 5, Scalar(255, 0, 0));
+	cout <<points.size()<<":"<< realPoint.x << ":" << realPoint.y << endl;
+	points.clear();
+	dst[4][0] = img.clone();
 }
 void Canny_demo(int, void*) {
 	Canny(dst[2][1].clone(), dst[3][0], canny, canny * 3, 3);
 }
 void processing(Mat parm)
 {
-
-
 	src = parm.clone();
 	dst[0][0] = src.clone();
 	dst[0][1] = src.clone();
@@ -110,6 +137,31 @@ void processing(Mat parm)
 	/// Wait until user finishes program
 }
 
+//int main(int argc, char** argv)
+//{
+//	/// Load an image
+//	Mat frame = imread("capture.jpg", 1);
+//	//VideoCapture capture("eye1.mp4");
+//	namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+//	//while (true)
+//	//{
+//		//capture >> frame;
+//		//if (frame.empty())
+//			//break;
+//		processing(frame);
+//		showPicture(0, 0);
+//		//waitKey(27); // waits to display frame
+//	//}
+//	while (true)
+//	{
+//		int c;
+//		c = waitKey(20);
+//		if ((char)c == 27)
+//		{
+//			break;
+//		}
+//	}
+//}
 int main(int argc, char** argv)
 {
 	/// Load an image
