@@ -14,7 +14,7 @@ char* window_name = "Threshold Demo";
 int threshold_value = 20;//binary image
 int threshold_type = 0;
 int canny = 0;//edge algorithm
-int picture_num = 4;//the pictures
+int picture_num = 0;//the pictures
 int const max_value = 255;
 int const max_type = 4;
 int const max_picture = 4;
@@ -22,8 +22,10 @@ int const max_canny = 100;
 int const max_BINARY_value = 255;
 int MAX_KERNEL_LENGTH = 15;
 Mat src, src_gray, dst[4][2];
-vector<Point> points;
-Point realPoint;
+vector<Point> points,realpoints;
+vector<RotatedRect> rectangles,realrectangles;
+Point realpoint;
+RotatedRect realrect;
 //{[0]:  median filtering, [1]:threshold algorithm, [2]:edge detection, [3]:ellipse detection}
 //{[0]은 단계별 결과 데이터, [1]은 [0]을 다음 단계의 입력값으로 넣게 되어 손상된 데이터}
 char* trackbar_value = "Value";
@@ -38,21 +40,57 @@ void pointsClusting()
 	int height = 240/2;
 	int nexx, prex = width;
 	int nexy, prey = height;
-	int reali=0;
+	int reali=-1;
 	for (int i = 0; i < points.size(); i++)
 	{
 		nexx = abs(width - points[i].x);
 		nexy = abs(width - points[i].y);
-		if (nexx < prex) {
+		if (nexx < prex && nexy<prey) {
 			prex = nexx;
-			reali = i;
-		}
-		if (nexy < prey) {
 			prey = nexy;
 			reali = i;
 		}
+		/*
+		if (nexy < prey) {
+			prey = nexy;
+			reali = i;
+		}*/
 	}
-	realPoint = points[reali];
+	if (reali == -1)
+	{
+		realpoint = realpoints[realpoints.size() - 1];
+		realrect = realrectangles[realrectangles.size() - 1];
+	}
+	else{
+		realpoint = points[reali];
+		realrect = rectangles[reali];
+		realpoints.push_back(realpoint);
+		realrectangles.push_back(realrect);
+	}
+	
+	
+}
+void realpointsDiff()
+{
+	int nexx, prex;
+	int nexy, prey;
+	int reali, realj= 0;
+	for (int i = 0;i < realpoints.size();i++)
+	{
+		for (int j = 0;j < points.size();i++)
+		{
+			prex = realpoints[i].x - points[j].x;
+			prey = realpoints[i].y - points[j].y;
+			if (prex < nexx)
+			{
+
+			}
+			if (prey < nexy)
+			{
+
+			}
+		}
+	}
 }
 void ellipseDetect()
 {
@@ -83,11 +121,11 @@ void ellipseDetect()
 			continue;
 		// Draw contour
 		Mat1b maskContour(img.rows, img.cols, uchar(0));
-		drawContours(maskContour, contours, i, Scalar(255, 0, 0), 2);
+		cv::drawContours(maskContour, contours, i, Scalar(255, 0, 0), 2);
 
 		// Draw ellips
 		Mat1b maskEllipse(img.rows, img.cols, uchar(0));
-		ellipse(maskEllipse, ell, Scalar(255), 2);
+		cv::ellipse(maskEllipse, ell, Scalar(255), 2);
 
 		// Intersect
 		Mat1b intersection = maskContour & maskEllipse;
@@ -98,15 +136,20 @@ void ellipseDetect()
 		float n = countNonZero(maskContour);
 		// Compute your measure
 		float measure = cnz / n;
-		// Draw, color coded: good -> gree, bad -> red
-		ellipse(img, ell, Scalar(0, measure * 255, 255 - measure * 255), 3);
-		points.push_back(ell.center);
-		
+		// Draw, color coded: good -> green, bad -> red
+		if(measure >0.5)
+		{
+			//cv::ellipse(img, ell, Scalar(0, measure * 255, 255 - measure * 255), 3);
+			rectangles.push_back(ell);
+			points.push_back(ell.center);
+		}
 	}
 	pointsClusting();
-	circle(img, realPoint, 5, Scalar(255, 0, 0));
-	cout <<points.size()<<":"<< realPoint.x << ":" << realPoint.y << endl;
+	cv::circle(img, realpoint, 5, Scalar(255, 0, 0));
+	//std::cout <<points.size()<<":"<< realpoint.x << ":" << realpoint.y << endl;
+	std::cout << points.size() << ":" << rectangles.size() <<endl;
 	points.clear();
+	rectangles.clear();
 	dst[4][0] = img.clone();
 }
 void Canny_demo(int, void*) {
@@ -130,6 +173,8 @@ void processing(Mat parm)
 	dst[3][1] = dst[3][0].clone();
 
 	ellipseDetect();
+	cv::ellipse(dst[0][0], realrect, Scalar(0, 0, 255));
+	cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width>realrect.boundingRect2f().height? realrect.boundingRect2f().height /2: realrect.boundingRect2f().width/2, Scalar(0, 255, 0));
 	createTrackbar(trackbar_type,
 		window_name, &picture_num,
 		max_picture, showPicture);
@@ -175,7 +220,7 @@ int main(int argc, char** argv)
 			break;
 		processing(frame);
 		showPicture(0, 0);
-		waitKey(27); // waits to display frame
+		waitKey(27); // waits e display frame
 	}
 	while (true)
 	{
