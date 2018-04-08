@@ -30,5 +30,8 @@
     <ClCompile Include="cropImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="leg_Source1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

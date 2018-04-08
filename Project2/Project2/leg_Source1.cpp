@@ -96,8 +96,7 @@ void onMouse(int event, int x, int y, int f, void*) {
 			P2.y = y;
 		}
 		break;
-	default:
-		break;
+	default:   break;
 	}
 	if (clicked) {
 		if (P1.x>P2.x) {
@@ -140,7 +139,7 @@ void orgnize_point_center()//무조건 중앙의 점을 눈동자의 점이라고 인식하는 방법
 	{
 		nexx = abs(width - points[i].x);
 		nexy = abs(width - points[i].y);
-		if (nexx < prex && nexy < prey) {
+		if (nexx < prex && nexy<prey) {
 			prex = nexx;
 			prey = nexy;
 			reali = i;
@@ -153,8 +152,7 @@ void orgnize_point_center()//무조건 중앙의 점을 눈동자의 점이라고 인식하는 방법
 	}
 	if (reali == -1)
 	{
-		
-		realpoints[realpoints.size() - 1];
+		realpoint = realpoints[realpoints.size() - 1];
 		realrect = realrectangles[realrectangles.size() - 1];
 	}
 	else{
@@ -186,9 +184,9 @@ void orgnize_point_center()//무조건 중앙의 점을 눈동자의 점이라고 인식하는 방법
 //		}
 //	}
 //}
-void orgnize_point_rectangle()//내부 정사각형 안에서 눈동자 점을 찾는 방법
+void orgnize_point_rect()//내부 정사각형 안에서 눈동자 점을 찾는 방법
 {
-	int reali=-1;
+	int reali;
 	int prex = cropRect.x;
 	int nexx = prex+cropRect.width;
 	int prey = cropRect.y;
@@ -196,33 +194,16 @@ void orgnize_point_rectangle()//내부 정사각형 안에서 눈동자 점을 찾는 방법
 	int diffpx,diffpy,diffnx, diffny;
 	for (int i = 0; i < points.size(); i++)
 	{
-		diffpx = points.at(i).x - prex;
-		diffpy = points.at(i).y - prey;
-		diffnx = nexx - points.at(i).x;
-		diffny = nexy - points.at(i).y;
-		if (diffpx > 0 && diffpy > 0 && diffnx > 0 && diffny > 0){
+		diffpx = points[i].x - prex;
+		diffpy = points[i].y - prey;
+		diffnx = nexx - points[i].x;
+		diffny = nexy - points[i].y;
+		if (diffpx > 0 && diffpy > 0 &&diffnx > 0 &&diffny > 0){
 			reali = i;
 			break;
 		}
 	}
-	cout << "diff";
-	cout << prex;
-	cout << ":";
-	cout << prey;
-	cout << ":";
-	cout << nexx;
-	cout << ":";
-	cout << nexy;
-	cout << ":";
-	cout << reali;
-	cout << endl;
-	if (reali != -1) {
-		realpoint = points[reali];
-		realrect = rectangles[reali];
-	}
-	else {
-		realpoint = Point(-1, -1);
-	}
+	realpoint = points[reali];
 }
 void ellipseDetect()
 {
@@ -275,11 +256,18 @@ void ellipseDetect()
 			points.push_back(ell.center);
 		}
 	}
-	orgnize_point_rectangle();
-	
-	//cv::circle(mat, realpoint, 5, Scalar(255, 0, 0));
+	orgnize_point_rect();
+	cv::circle(mat, realpoint, 5, Scalar(255, 0, 0));
+	//std::cout <<points.size()<<":"<< realpoint.x << ":" << realpoint.y << endl;
 	//std::cout << points.size() << ":" << rectangles.size() << endl;
-	
+	cout << cropRect.x;
+	cout << ":";
+	cout << cropRect.y;
+	cout << ":";
+	cout << cropRect.width;
+	cout << ":";
+	cout << cropRect.height;
+	cout << "\n" << endl;
 	points.clear();
 	rectangles.clear();
 	dst[4][0] = mat.clone();
@@ -305,31 +293,136 @@ void processing(Mat parm)
 	dst[3][1] = dst[3][0].clone();
 
 	ellipseDetect();
-	if(realpoint.x != -1 && realpoint.y != -1)
-	{
-		cv::ellipse(dst[0][0], realrect, Scalar(0, 0, 255));
-		cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width>realrect.boundingRect2f().height? realrect.boundingRect2f().height /2: realrect.boundingRect2f().width/2, Scalar(0, 255, 0));
-		std::cout << realpoint.x << ":" << realpoint.y << endl;
-		cout << cropRect.x;
-		cout << ":";
-		cout << cropRect.y;
-		cout << ":";
-		cout << cropRect.width;
-		cout << ":";
-		cout << cropRect.height;
-		cout << endl;
-	}
+	cv::ellipse(dst[0][0], realrect, Scalar(0, 0, 255));
+	cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width>realrect.boundingRect2f().height? realrect.boundingRect2f().height /2: realrect.boundingRect2f().width/2, Scalar(0, 255, 0));
+
 	createTrackbar(trackbar_type,
 		window_name, &picture_num,
 		max_picture, showPicture);
 	//showPicture(0, 0);
 	/// Wait until user finishes program
 }
+//int main(int argc, char** argv)
+//{
+//	/// Load an image
+//	Mat frame = imread("capture.jpg", 1);
+//	//VideoCapture capture("eye1.mp4");
+//	namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+//	//while (true)
+//	//{
+//		//capture >> frame;
+//		//if (frame.empty())
+//			//break;
+//		processing(frame);
+//		showPicture(0, 0);
+//		//waitKey(27); // waits to display frame
+//	//}
+//	while (true)
+//	{
+//		int c;
+//		c = waitKey(20);
+//		if ((char)c == 27)
+//		{
+//			break;
+//		}
+//	}
+//}
+int pureMain(int argc, char** argv)
+{
+	/// Load an image
+	 //= imread("capture.jpg", 1);
+	VideoCapture capture("eye0.mp4");
+	namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+	while (true)
+	{
+		capture >> frame;
+		if (frame.empty())
+			break;
+		processing(frame);
+		showPicture(0, 0);
+		waitKey(27); // waits e display frame
+	}
+	while (true)
+	{
+		int c;
+		c = waitKey(20);
+		if ((char)c == 27)
+		{
+			break;
+		}
+	}
+}
+
+int coarseMergingMain()
+{
+	namedWindow(winName, CV_WINDOW_AUTOSIZE);
+	frame = imread("capture.JPG", 1);
+	//VideoCapture capture("eye0.mp4");
+	//namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+	//while (true)
+	//{
+	//	capture >> frame;
+	//	if (frame.empty())
+	//		break;
+	//	processing(frame);
+	//	showPicture(0, 0);
+	//}
+	setMouseCallback(winName, onMouse, NULL);
+	imshow(winName, frame);
+	while (1) {
+		VideoCapture capture("eye0.mp4");
+		//namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+		while (true)
+		{
+			capture >> frame;
+			if (frame.empty())
+				break;
+			processing(frame);
+			showPicture(0, 0);
+		}
+		char c = waitKey();
+		if (c == 's'&&ROI.data) {
+			printf(imgName, "%d.jpg", i++);
+			imwrite(imgName, ROI);
+			cout << "  Saved " << imgName << endl;
+		}
+		if (c == '6') cropRect.x++;
+		if (c == '4') cropRect.x--;
+		if (c == '8') cropRect.y--;
+		if (c == '2') cropRect.y++;
+
+		if (c == 'w') { cropRect.y--; cropRect.height++; }
+		if (c == 'd') cropRect.width++;
+		if (c == 'x') cropRect.height++;
+		if (c == 'a') { cropRect.x--; cropRect.width++; }
+
+		if (c == 't') { cropRect.y++; cropRect.height--; }
+		if (c == 'h') cropRect.width--;
+		if (c == 'b') cropRect.height--;
+		if (c == 'f') { cropRect.x++; cropRect.width--; }
+
+		if (c == 27) break;
+		if (c == 'r') { cropRect.x = 0; cropRect.y = 0; cropRect.width = 0; cropRect.height = 0; }
+		showImage();
+	}
+	return 0;
+}
 int main()
 {
 	namedWindow(winName, CV_WINDOW_AUTOSIZE);
-	VideoCapture capture("eye1.mp4");
+	VideoCapture capture("eye0.mp4");
 	capture >> frame;
+	//frame = imread("capture.JPG", 1);
+	//VideoCapture capture("eye0.mp4");
+	//namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+	//while (true)
+	//{
+	//	capture >> frame;
+	//	if (frame.empty())
+	//		break;
+	//	processing(frame);
+	//	showPicture(0, 0);
+	//}
 	setMouseCallback(winName, onMouse, NULL);
 	checkBoundary();
 	while(1){
