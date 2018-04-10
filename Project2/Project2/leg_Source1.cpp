@@ -7,7 +7,7 @@
 using namespace std;
 using namespace cv;
 /// Global variables
-void showPicture(int, void*);
+
 char* trackbar_type = "Type: \n 0: Binary \n 1: Binary Inverted \n 2: Truncate \n 3: To Zero \n 4: To Zero Inverted";
 char* window_name = "Threshold Demo";
 //int threshold_value = 255;//zero image
@@ -21,6 +21,8 @@ int const max_picture = 4;
 int const max_canny = 100;
 int const max_BINARY_value = 255;
 int MAX_KERNEL_LENGTH = 15;
+
+
 Mat src, src_gray, dst[5][2];
 vector<Point> points,realpoints;
 vector<RotatedRect> rectangles,realrectangles;
@@ -120,7 +122,7 @@ void onMouse(int event, int x, int y, int f, void*) {
 	}
 	//showImage();
 }
-static void showPicture(int, void*)
+void showPicture(int, void*)
 {	
 	// cout << picture_num << endl;
 	rectangle(dst[picture_num][0], cropRect, Scalar(0, 255, 0), 2, 8, 0);
