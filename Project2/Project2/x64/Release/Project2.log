@@ -3,8 +3,8 @@ c:\users\jeff8\documents\gitrepos\pupil-detection-in-opencv\project2\project2\so
 c:\users\jeff8\documents\gitrepos\pupil-detection-in-opencv\project2\project2\source1.cpp(159): warning C4244: '초기화 중': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
 c:\users\jeff8\documents\gitrepos\pupil-detection-in-opencv\project2\project2\source1.cpp(203): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   코드를 생성하고 있습니다.
-  2 of 259 functions ( 0.8%) were compiled, the rest were copied from previous compilation.
-    1 functions were new in current compilation
+  1 of 259 functions ( 0.4%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
     0 functions had inline decision re-evaluated but remain unchanged
   코드를 생성했습니다.
   Project2.vcxproj -> C:\Users\jeff8\Documents\gitrepos\pupil-detection-in-opencv\Project2\x64\Release\Project2.exe

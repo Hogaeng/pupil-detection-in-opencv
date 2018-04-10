@@ -7,8 +7,6 @@
 using namespace std;
 using namespace cv;
 /// Global variables
-char* trackbar_type = "Type: \n 0: Binary \n 1: Binary Inverted \n 2: Truncate \n 3: To Zero \n 4: To Zero Inverted";
-//int threshold_value = 255;//zero image
 int threshold_value = 20;//binary image
 int canny = 0;//edge algorithm
 int picture_num = 0;//the pictures
@@ -18,25 +16,26 @@ int const max_value = 255;
 int const max_type = 4;
 int const max_picture = 4;
 int const max_canny = 100;
-int const max_BINARY_value = 255;
+int const max_binary_value = 255;
 int MAX_KERNEL_LENGTH = 15;
 
 //{[0]:  median filtering, [1]:threshold algorithm, [2]:edge detection, [3]:ellipse detection}
 //{[0]은 단계별 결과 데이터, [1]은 [0]을 다음 단계의 입력값으로 넣게 되어 손상된 데이터}
 char* trackbar_value = "Value";
 /// Function headers
-Rect cropRect(0, 0, 0, 0);
 Point P1(0, 0);
 Point P2(0, 0);
-Rect cropRect2(0, 0, 0, 0);
 Point P3(0, 0);
 Point P4(0, 0);
 
 bool clicked = false;
 bool clicked2 = false;
 
-char* winName = "eye0";
-char* winName2 = "eye1";
+char* winName = "eye0_";
+char* winName2 = "eye1_";
+
+float perPixel = 7.3;
+float NOWIPD = 65;
 class ImageOperate
 {
 private:
@@ -46,7 +45,8 @@ private:
 	Point realpoint;
 	RotatedRect realrect;
 	char * winName;
-	void orgnize_point_center()//무조건 중앙의 점을 눈동자의 점이라고 인식하는 방법
+	Rect cropRect;
+	void orgnize_point_center()//Deprecated.무조건 중앙의 점을 눈동자의 점이라고 인식하는 방법
 	{
 		int width = 320 / 2;
 		int height = 240 / 2;
@@ -62,11 +62,6 @@ private:
 				prey = nexy;
 				reali = i;
 			}
-			/*
-			if (nexy < prey) {
-			prey = nexy;
-			reali = i;
-			}*/
 		}
 		if (reali == -1)
 		{
@@ -100,18 +95,19 @@ private:
 				break;
 			}
 		}
-		/*cout << "diff";
-		cout << prex;
-		cout << ":";
-		cout << prey;
-		cout << ":";
-		cout << nexx;
-		cout << ":";
-		cout << nexy;
-		cout << ":";
-		cout << reali;
-		cout << endl;*/
+		
 		if (reali != -1) {
+			cout << "d_"<<winName;
+			cout << prex;
+			cout << ":";
+			cout << prey;
+			cout << ":";
+			cout << nexx;
+			cout << ":";
+			cout << nexy;
+			cout << ":";
+			cout << reali;
+			cout << endl;
 			realpoint = points[reali];
 			realrect = rectangles[reali];
 		}
@@ -123,8 +119,9 @@ public:
 	ImageOperate(char* _winName)
 	{
 		winName = _winName;
+		cropRect = Rect(0, 0, 0, 0);
 	}
-	void ellipseDetect()
+	void ellipseDetect()//다각형을 찾고 그 다각형에 맞는 타원을 찾아내는 함수
 	{
 		// Load image
 		Mat mat = dst[3][1];
@@ -180,7 +177,7 @@ public:
 		Canny(dst[2][1].clone(), dst[3][0], canny, canny * 3, 3);
 	}
 
-	void mainprocessing(Mat parm)
+	bool mainprocessing(Mat parm)//메디안 필터->흑백 변환 필터 -> canny의 엣지알고리즘->타원(동공)찾기->동공 그리기
 	{
 		src = parm.clone();
 		dst[0][0] = src.clone();
@@ -190,7 +187,7 @@ public:
 			medianBlur(src, dst[1][0], i);
 		}/// Convert the image to Gray
 		dst[1][1] = dst[1][0].clone();
-		threshold(dst[1][1], dst[2][0], 20, max_BINARY_value, 0);
+		threshold(dst[1][1], dst[2][0], 20, max_binary_value, 0);
 		dst[2][1] = dst[2][0].clone();
 
 		Canny_demo(0, 0);
@@ -200,8 +197,11 @@ public:
 		if (realpoint.x != -1 && realpoint.y != -1)
 		{
 			cv::ellipse(dst[0][0], realrect, Scalar(0, 0, 255));
-			cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width>realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2, Scalar(0, 255, 0));
-			/*cout << realpoint.x << ":" << realpoint.y << endl;
+			cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width > realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2, Scalar(0, 255, 0));
+			/*cout << winName;
+			cout << ";";
+			cout << realpoint.x << ":" << realpoint.y;
+			cout << ";";
 			cout << cropRect.x;
 			cout << ":";
 			cout << cropRect.y;
@@ -210,60 +210,55 @@ public:
 			cout << ":";
 			cout << cropRect.height;
 			cout << endl;*/
+			return true;
 		}
+		else
+			return false;
 	}
 	Mat getDst(int i, int j)
 	{
 		return dst[i][j];
 	}
+	Rect getcropRect()
+	{
+		return cropRect;
+	}
+	void setcropRect(int x,int y,int w, int h)
+	{
+		cropRect.x = x;
+		cropRect.y = y;
+		cropRect.width = w;
+		cropRect.height = h;
+	}
 };
 ImageOperate im1(winName);
 ImageOperate im2(winName2);
 
-void checkBoundary(Mat img) {
-	//check croping rectangle exceed image boundary
-	if (cropRect.width>img.cols - cropRect.x)
-		cropRect.width = img.cols - cropRect.x;
+void checkBoundary(Mat img,ImageOperate im) {//check croping rectangle exceed image boundary
+	int x = im.getcropRect().x;
+	int y = im.getcropRect().y;
+	int height = im.getcropRect().height;
+	int width = im.getcropRect().width;
+	if (im.getcropRect().width>img.cols - im.getcropRect().x)
+		width = img.cols - im.getcropRect().x;
 
-	if (cropRect.height>img.rows - cropRect.y)
-		cropRect.height = img.rows - cropRect.y;
+	if (im.getcropRect().height>img.rows - im.getcropRect().y)
+		height = img.rows - im.getcropRect().y;
 
-	if (cropRect.x<0)
-		cropRect.x = 0;
+	if (im.getcropRect().x<0)
+		x = 0;
 
-	if (cropRect.y<0)
-		cropRect.height = 0;
+	if (im.getcropRect().y<0)
+		height = 0;
+	im.setcropRect(x, y, width, height);
 };
-void checkBoundary2(Mat img) {
-	//check croping rectangle exceed image boundary
-	if (cropRect2.width>img.cols - cropRect2.x)
-		cropRect2.width = img.cols - cropRect2.x;
-
-	if (cropRect2.height>img.rows - cropRect2.y)
-		cropRect2.height = img.rows - cropRect2.y;
-
-	if (cropRect2.x<0)
-		cropRect2.x = 0;
-	
-	if (cropRect2.y<0)
-		cropRect2.height = 0;
-};
-void showImage(Mat frame, char* winName) {
+void showImage(Mat frame, char* winName,ImageOperate im) {
 	Mat img = frame.clone();
-	rectangle(img, cropRect, Scalar(0, 255, 0), 2, 8, 0);
+	rectangle(img, im.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
 	imshow(winName, img);
 	waitKey(27);
 	//잘린 사진이 나오는 곳.
 }
-void showImage2(Mat frame, char* winName) {
-	Mat img = frame.clone();
-	rectangle(img, cropRect2, Scalar(0, 255, 0), 2, 8, 0);
-	imshow(winName, img);
-	waitKey(27);
-	//잘린 사진이 나오는 곳.
-
-}
-
 
 //void orgnize_point_cali()//기준이 되는 동영상의 데이터를 가지고 눈동자 점을 찾는 방법
 //{
@@ -289,6 +284,10 @@ void showImage2(Mat frame, char* winName) {
 //}
 
 void onMouse(int event, int x, int y, int f, void*) {
+	int cx = im1.getcropRect().x;
+	int cy = im1.getcropRect().y;
+	int cwidth = im1.getcropRect().width;
+	int cheight = im1.getcropRect().height;
 	switch (event) {
 	case  CV_EVENT_LBUTTONDOWN:
 		clicked = true;
@@ -314,27 +313,31 @@ void onMouse(int event, int x, int y, int f, void*) {
 	}
 	if (clicked) {
 		if (P1.x>P2.x) {
-			cropRect.x = P2.x;
-			cropRect.width = P1.x - P2.x;
+			cx = P2.x;
+			cwidth = P1.x - P2.x;
 		}
 		else {
-			cropRect.x = P1.x;
-			cropRect.width = P2.x - P1.x;
+			cx = P1.x;
+			cwidth = P2.x - P1.x;
 		}
 
 		if (P1.y>P2.y) {
-			cropRect.y = P2.y;
-			cropRect.height = P1.y - P2.y;
+			cy = P2.y;
+			cheight = P1.y - P2.y;
 		}
 		else {
-			cropRect.y = P1.y;
-			cropRect.height = P2.y - P1.y;
+			cy = P1.y;
+			cheight = P2.y - P1.y;
 		}
-
 	}
+	im1.setcropRect(cx, cy, cwidth, cheight);
 }
 
 void onMouse2(int event, int x, int y, int f, void*) {
+	int cx = im2.getcropRect().x;
+	int cy = im2.getcropRect().y;
+	int cwidth = im2.getcropRect().width;
+	int cheight = im2.getcropRect().height;
 	switch (event) {
 	case  CV_EVENT_LBUTTONDOWN:
 		clicked2 = true;
@@ -360,38 +363,39 @@ void onMouse2(int event, int x, int y, int f, void*) {
 	}
 	if (clicked2) {
 		if (P3.x>P4.x) {
-			cropRect2.x = P4.x;
-			cropRect2.width = P3.x - P4.x;
+			cx = P4.x;
+			cwidth = P3.x - P4.x;
 		}
 		else {
-			cropRect2.x = P3.x;
-			cropRect2.width = P4.x - P3.x;
+			cx = P3.x;
+			cwidth = P4.x - P3.x;
 		}
 
 		if (P3.y>P4.y) {
-			cropRect2.y = P4.y;
-			cropRect2.height = P3.y - P4.y;
+			cy = P4.y;
+			cheight = P3.y - P4.y;
 		}
 		else {
-			cropRect2.y = P3.y;
-			cropRect2.height = P4.y - P3.y;
+			cy = P3.y;
+			cheight = P4.y - P3.y;
 		}
 
 	}
+	im2.setcropRect(cx, cy, cwidth, cheight);
+
 }
 
 void showPicture(int, void*)
 {
 	// cout << picture_num << endl;
-	rectangle(im1.getDst(picture_num,0), cropRect, Scalar(0, 255, 0), 2, 8, 0);
+	rectangle(im1.getDst(picture_num,0), im1.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
 	imshow(winName, im1.getDst(picture_num,0));
 	waitKey(27);
-
 }
 void showPicture2(int, void*)
 {
 	// cout << picture_num << endl;
-	rectangle(im2.getDst(picture_num,0), cropRect2, Scalar(0, 255, 0), 2, 8, 0);
+	rectangle(im2.getDst(picture_num,0), im2.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
 	imshow(winName2, im2.getDst(picture_num,0));
 	waitKey(27);
 
@@ -399,7 +403,6 @@ void showPicture2(int, void*)
 
 int main()
 {
-	
 	namedWindow(winName, CV_WINDOW_AUTOSIZE);
 	namedWindow(winName2, CV_WINDOW_AUTOSIZE);
 	VideoCapture capture("eye0.mp4");
@@ -407,44 +410,50 @@ int main()
 	Mat frame;
 	Mat frame2;
 	capture >> frame;
+	flip(frame, frame, 0);
 	capture2 >> frame2;
 	setMouseCallback(winName, onMouse, NULL);
 	setMouseCallback(winName2, onMouse2, NULL);
-	checkBoundary(frame);
-	checkBoundary2(frame2);
+	checkBoundary(frame,im1);
+	checkBoundary(frame2,im2);
 	while(1){
-		showImage(frame, winName);
-		showImage2(frame2, winName2);
-		if ((!clicked && (cropRect.width > 0 && cropRect.height > 0)) && (!clicked2 && (cropRect2.width > 0 && cropRect2.height > 0)))
+		showImage(frame, winName,im1);
+		showImage(frame2, winName2,im2);
+		if ((!clicked && (im1.getcropRect().width > 0 && im1.getcropRect().height > 0)) && (!clicked2 && (im2.getcropRect().width > 0 && im2.getcropRect().height > 0)))
 			break;
 	}
-	//imshow(winName, frame);
 	cvDestroyWindow(winName);
 	cvDestroyWindow(winName2);
-
-	createTrackbar(trackbar_type,
+	createTrackbar(winName,
 		winName, &picture_num,
 		max_picture, showPicture);
-	createTrackbar(trackbar_type,
+	createTrackbar(winName2,
 		winName2, &picture_num2,
 		max_picture, showPicture2);
 	int i = 0;
+	int j = 0;
+
 	while (true)
 	{
 		capture >> frame;
+		flip(frame, frame, 0);
 		capture2 >> frame2;
-		if(!frame.empty() && !frame2.empty()){
+		if (frame.empty() && frame2.empty())
+			break;
+		else if (!frame.empty() && !frame2.empty()) {
 			im1.mainprocessing(frame);
 			im2.mainprocessing(frame2);
 			showPicture(0, 0);
 			showPicture2(0, 0);
 		}
-		else
-		{
-			cout << i << endl;
-			i++;
-			continue;
-		}
+		else if (frame.empty())
+			cout << "end_0_" << i << endl;
+		else if (frame.empty())
+			cout << "end_1_" << j << endl;
+		i++;
+		j++;
 	}
+	cout << "frame: " << i << endl;
+	cout << "frame2: " << j << endl;
 	return 0;
 }
