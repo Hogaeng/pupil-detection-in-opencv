@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <cmath>
+#include <thread>
 using namespace std;
 using namespace cv;
 /// Global variables
@@ -34,7 +35,7 @@ bool clicked2 = false;
 char* winName = "eye0_";
 char* winName2 = "eye1_";
 
-float perPixel = 7.3;
+float perPixel = 7.2;
 float NOWIPD = 65;
 class ImageOperate
 {
@@ -97,7 +98,7 @@ private:
 		}
 		
 		if (reali != -1) {
-			cout << "d_"<<winName;
+			/*cout << "d_"<<winName;
 			cout << prex;
 			cout << ":";
 			cout << prey;
@@ -107,7 +108,7 @@ private:
 			cout << nexy;
 			cout << ":";
 			cout << reali;
-			cout << endl;
+			cout << endl;*/
 			realpoint = points[reali];
 			realrect = rectangles[reali];
 		}
@@ -229,6 +230,10 @@ public:
 		cropRect.y = y;
 		cropRect.width = w;
 		cropRect.height = h;
+	}
+	Point getRealpoint()
+	{
+		return realpoint;
 	}
 };
 ImageOperate im1(winName);
@@ -389,6 +394,7 @@ void showPicture(int, void*)
 {
 	// cout << picture_num << endl;
 	rectangle(im1.getDst(picture_num,0), im1.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
+	circle(im1.getDst(picture_num, 0), Point(im1.getcropRect().x + im1.getcropRect().width / 2, im1.getcropRect().y + im1.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
 	imshow(winName, im1.getDst(picture_num,0));
 	waitKey(27);
 }
@@ -396,21 +402,104 @@ void showPicture2(int, void*)
 {
 	// cout << picture_num << endl;
 	rectangle(im2.getDst(picture_num,0), im2.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
+	circle(im2.getDst(picture_num, 0), Point(im2.getcropRect().x + im2.getcropRect().width / 2, im2.getcropRect().y + im2.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
 	imshow(winName2, im2.getDst(picture_num,0));
 	waitKey(27);
+}
+bool pause = false;
+
+void calculateIPD(Point rpivot, Point lpivot)
+{
+	Point null(-1, -1);
+	Point right = null;
+	Point left = null;
+	right = im1.getRealpoint();
+	left = im2.getRealpoint();
+	if (right == null || left==null)
+	{
+		return;
+	}
+	int d_lx = left.x -lpivot.x ;
+	int d_rx = right.x - rpivot.x;
+	int d_ly = lpivot.y - left.y;
+	int d_ry = rpivot.y - right.y;
+	/*if (!pause)
+		cout << "lx:" << d_lx << ":" << d_ly << ":";*/
+	double drpix = sqrt(pow(d_rx, 2) + pow(d_ry, 2));
+	double dlpix = sqrt(pow(d_lx, 2) + pow(d_ly, 2));
+	double mmr = drpix / perPixel;
+	double mml = dlpix / perPixel;
+	/*if (!pause){
+		cout << "pix:" << drpix << ":" << dlpix << ":";
+		cout << "mmm:" << mmr << ":" << mml << ":" <<endl;
+	}*/
+	bool nw_right, nw_left; /// true는 넓어지는 방향, false는 좁아지는 방향
+
+	/*if (d_rx == 0) /// y축만 +차이가 있는 경우, 좁아진다고 하자.
+		if (d_ry > 0)
+			pm_right = false;
+		else
+			pm_right = true;
+	
+	else if ((float)d_ry/d_rx > 0)/// 오른쪽 위로 뻗으면 좁아지니 false, 왼쪽 위로 뻗으면 좁아지니 true;
+			pm_right = false;
+	else
+		pm_right = true;
+
+	if (d_lx == 0) /// y축만 +차이가 있는 경우, 좁아진다고 하자.
+		if (d_ly > 0)
+			pm_left = false;
+		else
+			pm_left = true;
+	else if ((float)d_ly / d_lx > 0) /// 오른쪽 위로 뻗으면 넓어지니 true, 왼쪽 위로 뻗으면 좁아지니 false
+		pm_left = true;
+	else
+		pm_left = false;*/
+	if (d_rx > 0)
+		nw_right = false;
+	else
+		nw_right = true;
+	if (d_lx > 0)
+		nw_left = true;
+	else
+		nw_left=false;
+	/*if (!pause)
+		cout << nw_right << endl;*/
+	/*if (!pause)
+		cout << nw_left << endl;*/
+	if (!nw_right)
+		mmr = -mmr;
+	if (!nw_left)
+		mml = -mml;
+
+	if (!pause)
+		cout << "IPD:" << NOWIPD + mml + mmr << endl;
 
 }
-
+void func()
+{
+	if (cv::waitKey(1) == 'p')
+			pause = !pause;
+}
 int main()
 {
+	while(1){
+		cin >> NOWIPD;
+		break;
+	}
+	cout << "NOWIPD:" << NOWIPD << endl;
+	//IPD 적는 단계
 	namedWindow(winName, CV_WINDOW_AUTOSIZE);
 	namedWindow(winName2, CV_WINDOW_AUTOSIZE);
-	VideoCapture capture("eye0.mp4");
-	VideoCapture capture2("eye1.mp4");
+	VideoCapture capture("eye0.mp4");//right eye
+	VideoCapture capture2("eye1.mp4");//left eye
 	Mat frame;
 	Mat frame2;
+	Point rpivot;
+	Point lpivot;
+	//두 눈 중앙값 지정단계
 	capture >> frame;
-	flip(frame, frame, 0);
+	flip(frame, frame, -1);
 	capture2 >> frame2;
 	setMouseCallback(winName, onMouse, NULL);
 	setMouseCallback(winName2, onMouse2, NULL);
@@ -422,6 +511,9 @@ int main()
 		if ((!clicked && (im1.getcropRect().width > 0 && im1.getcropRect().height > 0)) && (!clicked2 && (im2.getcropRect().width > 0 && im2.getcropRect().height > 0)))
 			break;
 	}
+	rpivot = Point(im1.getcropRect().x + im1.getcropRect().width / 2, im1.getcropRect().y + im1.getcropRect().height/2);
+	lpivot = Point(im2.getcropRect().x + im2.getcropRect().width / 2, im2.getcropRect().y + im2.getcropRect().height/2);
+	//초록 사각형 지정하는 단계
 	cvDestroyWindow(winName);
 	cvDestroyWindow(winName2);
 	createTrackbar(winName,
@@ -432,27 +524,45 @@ int main()
 		max_picture, showPicture2);
 	int i = 0;
 	int j = 0;
-
 	while (true)
 	{
-		capture >> frame;
-		flip(frame, frame, 0);
-		capture2 >> frame2;
+		thread t1;
+		thread t2;
+		if (cv::waitKey(1) == 'p')
+			pause = !pause;
+		if (!pause)
+		{
+			capture >> frame;
+			flip(frame, frame, -1);
+			capture2 >> frame2;	
+			//im1.mainprocessing(frame);
+			//im2.mainprocessing(frame2);
+			
+		}
 		if (frame.empty() && frame2.empty())
 			break;
-		else if (!frame.empty() && !frame2.empty()) {
-			im1.mainprocessing(frame);
-			im2.mainprocessing(frame2);
+		else if (!frame.empty() && !frame2.empty()) {	
+			/*t1 = thread(&ImageOperate::mainprocessing, &im1, frame);
+			t2 = thread(&ImageOperate::mainprocessing, &im2, frame2);
+			t1.join();
+			t2.join();
 			showPicture(0, 0);
 			showPicture2(0, 0);
+			calculateIPD(rpivot, lpivot);*/
 		}
-		else if (frame.empty())
+		else if (frame.empty()){
 			cout << "end_0_" << i << endl;
-		else if (frame.empty())
+			i--;
+		}
+		else if (frame2.empty()){
 			cout << "end_1_" << j << endl;
+			j--;
+		}
 		i++;
 		j++;
+		
 	}
+	///동공 추적 후 IPD 계산단계
 	cout << "frame: " << i << endl;
 	cout << "frame2: " << j << endl;
 	return 0;
