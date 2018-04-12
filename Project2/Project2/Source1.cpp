@@ -1,10 +1,11 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include <stdlib.h>
-#include <stdio.h>
+#include <fstream>
 #include <iostream>
 #include <cmath>
 #include <thread>
+#include <time.h>
+#define _CRT_SECURE_NO_WARNINGS
 using namespace std;
 using namespace cv;
 /// Global variables
@@ -35,8 +36,10 @@ bool clicked2 = false;
 char* winName = "eye0_";
 char* winName2 = "eye1_";
 
-float perPixel = 7.2;
+float perPixel = 14.7;
 float NOWIPD = 65;
+ofstream file;
+
 class ImageOperate
 {
 private:
@@ -96,7 +99,7 @@ private:
 				break;
 			}
 		}
-		
+
 		if (reali != -1) {
 			/*cout << "d_"<<winName;
 			cout << prex;
@@ -158,7 +161,7 @@ public:
 			// Compute your measure
 			float measure = cnz / n;
 			// Draw, color coded: good -> green, bad -> red
-			if (measure >0.5)
+			if (measure > 0.5)
 			{
 				//cv::ellipse(img, ell, Scalar(0, measure * 255, 255 - measure * 255), 3);
 				rectangles.push_back(ell);
@@ -224,7 +227,7 @@ public:
 	{
 		return cropRect;
 	}
-	void setcropRect(int x,int y,int w, int h)
+	void setcropRect(int x, int y, int w, int h)
 	{
 		cropRect.x = x;
 		cropRect.y = y;
@@ -234,6 +237,10 @@ public:
 	Point getRealpoint()
 	{
 		return realpoint;
+	}
+	RotatedRect getRealrect()
+	{
+		return realrect;
 	}
 };
 ImageOperate im1(winName);
@@ -260,6 +267,7 @@ void checkBoundary(Mat img,ImageOperate im) {//check croping rectangle exceed im
 void showImage(Mat frame, char* winName,ImageOperate im) {
 	Mat img = frame.clone();
 	rectangle(img, im.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
+	circle(img, Point(im.getcropRect().x + im.getcropRect().width / 2, im.getcropRect().y + im.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
 	imshow(winName, img);
 	waitKey(27);
 	//잘린 사진이 나오는 곳.
@@ -419,22 +427,30 @@ void calculateIPD(Point rpivot, Point lpivot)
 	{
 		return;
 	}
-	int d_lx = left.x -lpivot.x ;
+	int d_lx = left.x - lpivot.x ;
 	int d_rx = right.x - rpivot.x;
 	int d_ly = lpivot.y - left.y;
 	int d_ry = rpivot.y - right.y;
 	/*if (!pause)
 		cout << "lx:" << d_lx << ":" << d_ly << ":";*/
-	double drpix = sqrt(pow(d_rx, 2) + pow(d_ry, 2));
-	double dlpix = sqrt(pow(d_lx, 2) + pow(d_ly, 2));
-	double mmr = drpix / perPixel;
-	double mml = dlpix / perPixel;
+	//double drpix = sqrt(pow(d_rx, 2) + pow(d_ry, 2));
+	//double dlpix = sqrt(pow(d_lx, 2) + pow(d_ly, 2));
+	//double mmr = drpix / perPixel;
+	//double mml = dlpix / perPixel;
+	double mmr = abs(d_rx / perPixel);
+	double mml = abs(d_lx / perPixel);
 	/*if (!pause){
-		cout << "pix:" << drpix << ":" << dlpix << ":";
-		cout << "mmm:" << mmr << ":" << mml << ":" <<endl;
+		cout << "rpix:" << ":" << d_rx << ":" << d_ry << ":" << drpix << ":";
+		cout << "lpix:" << dlpix << ":";
+		cout << "rmm:" << mmr << endl;
+		cout << "lmm:" << mml <<endl;
 	}*/
-	bool nw_right, nw_left; /// true는 넓어지는 방향, false는 좁아지는 방향
+	//RotatedRect realrect = im1.getRealrect();
+	//RotatedRect realrect2 = im2.getRealrect();
+	//int radius_r = realrect.boundingRect2f().width > realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2;
+	//int radius_l = realrect2.boundingRect2f().width > realrect2.boundingRect2f().height ? realrect2.boundingRect2f().height / 2 : realrect2.boundingRect2f().width / 2;
 
+	bool nw_right, nw_left; /// true는 넓어지는 방향, false는 좁아지는 방향
 	/*if (d_rx == 0) /// y축만 +차이가 있는 경우, 좁아진다고 하자.
 		if (d_ry > 0)
 			pm_right = false;
@@ -463,30 +479,51 @@ void calculateIPD(Point rpivot, Point lpivot)
 		nw_left = true;
 	else
 		nw_left=false;
-	/*if (!pause)
-		cout << nw_right << endl;*/
-	/*if (!pause)
-		cout << nw_left << endl;*/
-	if (!nw_right)
+	/*if (!pause){
+		cout << nw_left << endl;
+		cout << nw_right << endl;
+	}*/
+	if (!nw_right){
 		mmr = -mmr;
-	if (!nw_left)
+	}
+	if (!nw_left) {
 		mml = -mml;
-
-	if (!pause)
+	}
+	if (!pause){
+		//cout << "mmr:" << mmr<<":";
+		//cout << "mml:" << mml << endl;
+		file << "mmr:" << mmr <<"_";
+		file << "mml:" << mml << "_";
+		file << "IPD:" << NOWIPD + mml + mmr << endl;
 		cout << "IPD:" << NOWIPD + mml + mmr << endl;
-
+	}
 }
 void func()
 {
 	if (cv::waitKey(1) == 'p')
 			pause = !pause;
 }
+const std::string currentDateTime() {
+	time_t     now = time(0); //현재 시간을 time_t 타입으로 저장
+	struct tm  tstruct;
+	char       buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%m_%d_%H_%M_%S", &tstruct); // YYYY-MM-DD.HH:mm:ss 형태의 스트링
+
+	return buf;
+}
+
 int main()
 {
+	string fname = "ipd\\" + currentDateTime() + ".txt";
+	file.open(fname);
+	
 	while(1){
+		cout << "please type the IPD:";
 		cin >> NOWIPD;
 		break;
 	}
+	file << "NOWIPD:" << NOWIPD << endl;
 	cout << "NOWIPD:" << NOWIPD << endl;
 	//IPD 적는 단계
 	namedWindow(winName, CV_WINDOW_AUTOSIZE);
@@ -537,18 +574,17 @@ int main()
 			capture2 >> frame2;	
 			//im1.mainprocessing(frame);
 			//im2.mainprocessing(frame2);
-			
 		}
 		if (frame.empty() && frame2.empty())
 			break;
 		else if (!frame.empty() && !frame2.empty()) {	
-			/*t1 = thread(&ImageOperate::mainprocessing, &im1, frame);
+			t1 = thread(&ImageOperate::mainprocessing, &im1, frame);
 			t2 = thread(&ImageOperate::mainprocessing, &im2, frame2);
 			t1.join();
 			t2.join();
 			showPicture(0, 0);
 			showPicture2(0, 0);
-			calculateIPD(rpivot, lpivot);*/
+			calculateIPD(rpivot, lpivot);
 		}
 		else if (frame.empty()){
 			cout << "end_0_" << i << endl;
@@ -565,5 +601,6 @@ int main()
 	///동공 추적 후 IPD 계산단계
 	cout << "frame: " << i << endl;
 	cout << "frame2: " << j << endl;
+	file.close();
 	return 0;
 }
