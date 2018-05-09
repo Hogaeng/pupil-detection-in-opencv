@@ -40,6 +40,38 @@ float perPixel = 14.7;
 float NOWIPD = 65;
 ofstream file;
 
+class RectPainter
+{
+private:
+	Point tmpRealpoint;
+	RotatedRect tmpRealrect;
+	bool twoRectTrigger = true;
+	Mat finmat;
+public:
+	void twoPutInThanPaintit(Mat *dst, Point realpoint, RotatedRect realrect)
+	{
+		if(twoRectTrigger)
+		{
+			tmpRealpoint = realpoint;
+			tmpRealrect = realrect;
+			twoRectTrigger = false;
+		}
+		else
+		{
+			finmat = *dst;
+			cv::ellipse(finmat, realrect, Scalar(0, 255, 255));
+			cv::circle(finmat, realpoint, tmpRealrect.boundingRect2f().width > realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2, Scalar(255, 255, 255));
+			cv::ellipse(finmat, tmpRealrect, Scalar(0, 255, 255));
+			cv::circle(finmat, tmpRealpoint, tmpRealrect.boundingRect2f().width > tmpRealrect.boundingRect2f().height ? tmpRealrect.boundingRect2f().height / 2 : tmpRealrect.boundingRect2f().width / 2, Scalar(255, 255, 255));
+			twoRectTrigger = true;
+		}
+	}
+	Mat getmat()
+	{
+		return finmat;
+	}
+};
+RectPainter rp = RectPainter();
 class ImageOperate
 {
 private:
@@ -177,11 +209,11 @@ public:
 		rectangles.clear();
 		dst[4][0] = mat.clone();
 	}
-	void Canny_demo(int, void*) {
+	void Canny_demo(int, void*) {//엣지 알고리즘
 		Canny(dst[2][1].clone(), dst[3][0], canny, canny * 3, 3);
 	}
 
-	bool mainprocessing(Mat parm)//메디안 필터->흑백 변환 필터 -> canny의 엣지알고리즘->타원(동공)찾기->동공 그리기
+	void mainprocessing(Mat parm)//메디안 필터->흑백 변환 필터 -> canny의 엣지알고리즘->타원(동공)찾기->동공 그리기
 	{
 		src = parm.clone();
 		dst[0][0] = src.clone();
@@ -198,22 +230,15 @@ public:
 		dst[3][1] = dst[3][0].clone();
 
 		ellipseDetect();
+		//paintRectPoint(&dst[0][0]);
+		rp.twoPutInThanPaintit(&dst[0][0], realpoint, realrect);
+	}
+	bool paintRectPoint(Mat *dst)//메디안 필터->흑백 변환 필터 -> canny의 엣지알고리즘->타원(동공)찾기->동공 그리기
+	{
 		if (realpoint.x != -1 && realpoint.y != -1)
 		{
-			cv::ellipse(dst[0][0], realrect, Scalar(0, 0, 255));
-			cv::circle(dst[0][0], realpoint, realrect.boundingRect2f().width > realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2, Scalar(0, 255, 0));
-			/*cout << winName;
-			cout << ";";
-			cout << realpoint.x << ":" << realpoint.y;
-			cout << ";";
-			cout << cropRect.x;
-			cout << ":";
-			cout << cropRect.y;
-			cout << ":";
-			cout << cropRect.width;
-			cout << ":";
-			cout << cropRect.height;
-			cout << endl;*/
+			cv::ellipse(*dst, realrect, Scalar(0, 255, 255));
+			cv::circle(*dst, realpoint, realrect.boundingRect2f().width > realrect.boundingRect2f().height ? realrect.boundingRect2f().height / 2 : realrect.boundingRect2f().width / 2, Scalar(255, 255, 255));
 			return true;
 		}
 		else
@@ -244,8 +269,9 @@ public:
 	}
 };
 ImageOperate im1(winName);
-ImageOperate im2(winName2);
-
+//ImageOperate im2(winName2);
+ImageOperate im2(winName);
+//비디오의 이미지인 img에서 초록 사각형을 그릴때, 초록 사각형이 img의 최댓값과 최솟값을 넘지 않기 위한 함수.
 void checkBoundary(Mat img,ImageOperate im) {//check croping rectangle exceed image boundary
 	int x = im.getcropRect().x;
 	int y = im.getcropRect().y;
@@ -264,15 +290,23 @@ void checkBoundary(Mat img,ImageOperate im) {//check croping rectangle exceed im
 		height = 0;
 	im.setcropRect(x, y, width, height);
 };
+//초록사각형과 사각형의 가운데 점을 그려주는 함수(첫 단계 그림그리는 이미지에 한에서만 사용됨)
 void showImage(Mat frame, char* winName,ImageOperate im) {
 	Mat img = frame.clone();
 	rectangle(img, im.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
 	circle(img, Point(im.getcropRect().x + im.getcropRect().width / 2, im.getcropRect().y + im.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
 	imshow(winName, img);
 	waitKey(27);
-	//잘린 사진이 나오는 곳.
 }
-
+void showImage2(Mat frame, char* winName, ImageOperate im, ImageOperate im2) {
+	Mat img = frame.clone();
+	rectangle(img, im.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
+	circle(img, Point(im.getcropRect().x + im.getcropRect().width / 2, im.getcropRect().y + im.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
+	rectangle(img, im2.getcropRect(), Scalar(0, 255, 0), 2, 8, 0);
+	circle(img, Point(im2.getcropRect().x + im2.getcropRect().width / 2, im2.getcropRect().y + im2.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
+	imshow(winName, img);
+	waitKey(27);
+}
 //void orgnize_point_cali()//기준이 되는 동영상의 데이터를 가지고 눈동자 점을 찾는 방법
 //{
 //	int nexx, prex;
@@ -295,7 +329,7 @@ void showImage(Mat frame, char* winName,ImageOperate im) {
 //		}
 //	}
 //}
-
+//오른쪽 눈의 사각형을 그려주는 마우스 콜백함수
 void onMouse(int event, int x, int y, int f, void*) {
 	int cx = im1.getcropRect().x;
 	int cy = im1.getcropRect().y;
@@ -345,7 +379,7 @@ void onMouse(int event, int x, int y, int f, void*) {
 	}
 	im1.setcropRect(cx, cy, cwidth, cheight);
 }
-
+//왼쪽 눈의 사각형을 그려주는 마우스 콜백함수
 void onMouse2(int event, int x, int y, int f, void*) {
 	int cx = im2.getcropRect().x;
 	int cy = im2.getcropRect().y;
@@ -397,7 +431,110 @@ void onMouse2(int event, int x, int y, int f, void*) {
 	im2.setcropRect(cx, cy, cwidth, cheight);
 
 }
+bool onMouse3Trigger = true;
+void onMouse3(int event, int x, int y, int f, void*) {
+	if (onMouse3Trigger)
+	{
+		int cx = im1.getcropRect().x;
+		int cy = im1.getcropRect().y;
+		int cwidth = im1.getcropRect().width;
+		int cheight = im1.getcropRect().height;
+		switch (event) {
+		case  CV_EVENT_LBUTTONDOWN:
+			clicked = true;
+			P1.x = x;
+			P1.y = y;
+			P2.x = x;
+			P2.y = y;
+			//destroyWindow("cropped");
+			break;
+		case  CV_EVENT_LBUTTONUP:
+			P2.x = x;
+			P2.y = y;
+			clicked = false;
+			onMouse3Trigger = false;
+			break;
+		case  CV_EVENT_MOUSEMOVE:
+			if (clicked) {
+				P2.x = x;
+				P2.y = y;
+			}
+			break;
+		default:
+			break;
+		}
+		if (clicked) {
+			if (P1.x>P2.x) {
+				cx = P2.x;
+				cwidth = P1.x - P2.x;
+			}
+			else {
+				cx = P1.x;
+				cwidth = P2.x - P1.x;
+			}
 
+			if (P1.y>P2.y) {
+				cy = P2.y;
+				cheight = P1.y - P2.y;
+			}
+			else {
+				cy = P1.y;
+				cheight = P2.y - P1.y;
+			}
+		}
+		im1.setcropRect(cx, cy, cwidth, cheight);
+	}
+	else {
+		int cx = im2.getcropRect().x;
+		int cy = im2.getcropRect().y;
+		int cwidth = im2.getcropRect().width;
+		int cheight = im2.getcropRect().height;
+		switch (event) {
+		case  CV_EVENT_LBUTTONDOWN:
+			clicked2 = true;
+			P3.x = x;
+			P3.y = y;
+			P4.x = x;
+			P4.y = y;
+			//destroyWindow("cropped");
+			break;
+		case  CV_EVENT_LBUTTONUP:
+			P4.x = x;
+			P4.y = y;
+			clicked2 = false;
+			break;
+		case  CV_EVENT_MOUSEMOVE:
+			if (clicked2) {
+				P4.x = x;
+				P4.y = y;
+			}
+			break;
+		default:
+			break;
+		}
+		if (clicked2) {
+			if (P3.x>P4.x) {
+				cx = P4.x;
+				cwidth = P3.x - P4.x;
+			}
+			else {
+				cx = P3.x;
+				cwidth = P4.x - P3.x;
+			}
+
+			if (P3.y>P4.y) {
+				cy = P4.y;
+				cheight = P3.y - P4.y;
+			}
+			else {
+				cy = P3.y;
+				cheight = P4.y - P3.y;
+			}
+		}
+		im2.setcropRect(cx, cy, cwidth, cheight);
+	}
+}
+//초록사각형과 사각형의 가운데 점을 그려주는 함수(두번째 단계 동공을 추적하는 과정에 한에서만 사용됨. 오른쪽)
 void showPicture(int, void*)
 {
 	// cout << picture_num << endl;
@@ -406,6 +543,7 @@ void showPicture(int, void*)
 	imshow(winName, im1.getDst(picture_num,0));
 	waitKey(27);
 }
+//초록사각형과 사각형의 가운데 점을 그려주는 함수(두번째 단계 동공을 추적하는 과정에 한에서만 사용됨. 오른쪽)
 void showPicture2(int, void*)
 {
 	// cout << picture_num << endl;
@@ -414,8 +552,19 @@ void showPicture2(int, void*)
 	imshow(winName2, im2.getDst(picture_num,0));
 	waitKey(27);
 }
+//초록사각형과 사각형의 가운데 점을 그려주는 함수(두번째 단계 동공을 추적하는 과정에 한에서만 사용됨. 오른쪽, 왼쪽 둘다 한 화면에 나옴)
+void showPicture3(int, void*)
+{
+	// cout << picture_num << endl;
+	rectangle(im2.getDst(picture_num, 0), im1.getcropRect(), Scalar(255, 0, 255), 2, 8, 0);
+	circle(im2.getDst(picture_num, 0), Point(im1.getcropRect().x + im1.getcropRect().width / 2, im1.getcropRect().y + im2.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
+	rectangle(im2.getDst(picture_num, 0), im2.getcropRect(), Scalar(255, 0, 255), 2, 8, 0);
+	circle(im2.getDst(picture_num, 0), Point(im2.getcropRect().x + im2.getcropRect().width / 2, im2.getcropRect().y + im2.getcropRect().height / 2), 3, Scalar(255, 0, 0), 2, 8);
+	imshow(winName, im2.getDst(picture_num, 0));
+	waitKey(27);
+}
 bool pause = false;
-
+//왼쪽과 오른쪽 위치를 받아 IPD를 측정하는 함수.
 void calculateIPD(Point rpivot, Point lpivot)
 {
 	Point null(-1, -1);
@@ -498,11 +647,14 @@ void calculateIPD(Point rpivot, Point lpivot)
 		cout << "IPD:" << NOWIPD + mml + mmr << endl;
 	}
 }
-void func()
+//pause하기 위한 함수. Deprecated.
+void pausefunc()
 {
 	if (cv::waitKey(1) == 'p')
 			pause = !pause;
 }
+
+
 const std::string currentDateTime() {
 	time_t     now = time(0); //현재 시간을 time_t 타입으로 저장
 	struct tm  tstruct;
@@ -517,8 +669,8 @@ int main()
 {
 	string fname = "ipd\\" + currentDateTime() + ".txt";
 	file.open(fname);
-	
-	while(1){
+
+	while (1) {
 		cout << "please type the IPD:";
 		cin >> NOWIPD;
 		break;
@@ -527,24 +679,30 @@ int main()
 	cout << "NOWIPD:" << NOWIPD << endl;
 	//IPD 적는 단계
 	namedWindow(winName, CV_WINDOW_AUTOSIZE);
-	namedWindow(winName2, CV_WINDOW_AUTOSIZE);
-	VideoCapture capture("eye0.mp4");//right eye
-	VideoCapture capture2("eye1.mp4");//left eye
+	//namedWindow(winName2, CV_WINDOW_AUTOSIZE);
+	//VideoCapture capture("eye0.mp4");//right eye
+	VideoCapture capture("bandicam.avi");//right eye
+	//VideoCapture capture2("eye1.mp4");//left eye
 	Mat frame;
-	Mat frame2;
+	//Mat frame2;
 	Point rpivot;
 	Point lpivot;
 	//두 눈 중앙값 지정단계
 	capture >> frame;
-	flip(frame, frame, -1);
-	capture2 >> frame2;
-	setMouseCallback(winName, onMouse, NULL);
-	setMouseCallback(winName2, onMouse2, NULL);
+	for (int i=0; i < 200; i++)
+		capture >> frame;
+	//flip(frame, frame, -1);
+	//capture2 >> frame2;
+	//setMouseCallback(winName, onMouse, NULL);
+	//setMouseCallback(winName2, onMouse2, NULL);
+	setMouseCallback(winName, onMouse3, NULL);
 	checkBoundary(frame,im1);
-	checkBoundary(frame2,im2);
+	//checkBoundary(frame2,im2);
+	checkBoundary(frame, im2);
 	while(1){
-		showImage(frame, winName,im1);
-		showImage(frame2, winName2,im2);
+		//showImage(frame, winName,im1);
+		//showImage(frame2, winName2,im2);
+		showImage2(frame, winName, im1, im2);
 		if ((!clicked && (im1.getcropRect().width > 0 && im1.getcropRect().height > 0)) && (!clicked2 && (im2.getcropRect().width > 0 && im2.getcropRect().height > 0)))
 			break;
 	}
@@ -552,13 +710,16 @@ int main()
 	lpivot = Point(im2.getcropRect().x + im2.getcropRect().width / 2, im2.getcropRect().y + im2.getcropRect().height/2);
 	//초록 사각형 지정하는 단계
 	cvDestroyWindow(winName);
-	cvDestroyWindow(winName2);
+	//cvDestroyWindow(winName2);
+	/*createTrackbar(winName,
+		winName, &picture_num,
+		max_picture, showPicture);*/
+	/*createTrackbar(winName2,
+		winName2, &picture_num2,
+		max_picture, showPicture2);*/
 	createTrackbar(winName,
 		winName, &picture_num,
-		max_picture, showPicture);
-	createTrackbar(winName2,
-		winName2, &picture_num2,
-		max_picture, showPicture2);
+		max_picture, showPicture3);
 	int i = 0;
 	int j = 0;
 	while (true)
@@ -570,33 +731,32 @@ int main()
 		if (!pause)
 		{
 			capture >> frame;
-			flip(frame, frame, -1);
-			capture2 >> frame2;	
+			//flip(frame, frame, -1);
+			//capture2 >> frame2;	
 			//im1.mainprocessing(frame);
 			//im2.mainprocessing(frame2);
 		}
-		if (frame.empty() && frame2.empty())
+		if (frame.empty())// && frame2.empty())
 			break;
-		else if (!frame.empty() && !frame2.empty()) {	
+		else if (!frame.empty()){// && !frame2.empty()) {	
 			t1 = thread(&ImageOperate::mainprocessing, &im1, frame);
-			t2 = thread(&ImageOperate::mainprocessing, &im2, frame2);
+			t2 = thread(&ImageOperate::mainprocessing, &im2, frame);
 			t1.join();
 			t2.join();
-			showPicture(0, 0);
-			showPicture2(0, 0);
+			showPicture3(0, 0);
+			//showPicture2(0, 0);
 			calculateIPD(rpivot, lpivot);
 		}
 		else if (frame.empty()){
 			cout << "end_0_" << i << endl;
 			i--;
 		}
-		else if (frame2.empty()){
+		/*else if (frame2.empty()){
 			cout << "end_1_" << j << endl;
 			j--;
-		}
+		}*/
 		i++;
 		j++;
-		
 	}
 	///동공 추적 후 IPD 계산단계
 	cout << "frame: " << i << endl;
